@@ -13,13 +13,6 @@ class UDP_secure:
 
     def send(self, ip, port, data):
         self.socket.sendto(data, (ip, port))
-    
-    def receive(self, from_ip):
-        self.socket.bind((from_ip, self.port))
-        while True:
-            data, address = self.socket.recvfrom(self.buffer)
-            print("Received:", data, "from", address)
-            self.send(address[0], address[1], b"Recebido!")
 
     def __del__(self):
         self.socket.close()
@@ -42,5 +35,13 @@ class Client(UDP_secure):
             print("Received:", data, "from", address, "in", time.time() - self.timer)
             break
 
-    def __del__(self):
-        super().__del__()
+class Server(UDP_secure):
+    def __init__(self, ip, port, buff):
+        super().__init__(ip, port, buff)
+    
+    def receive(self, from_ip):
+        self.socket.bind((from_ip, self.port))
+        while True:
+            data, address = self.socket.recvfrom(self.buffer)
+            print("Received:", data, "from", address)
+            self.send(address[0], address[1], b"Recebido!")
