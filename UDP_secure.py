@@ -20,6 +20,11 @@ class UDP_secure:
         self.socket.sendto(data, (ip, port))
         print("Enviou '" + data.decode() + "' com sucesso")
 
+    def receive(self):
+        data, address = self.socket.recvfrom(self.buffer)
+        print("Recebeu:", data, "de", address)
+        return data, address
+
     def isNotInWindow(self, index):
         wndSize = self.windowSize   # get window size
         wndStart = self.windowStart   # get window start
@@ -43,10 +48,24 @@ class Client(UDP_secure):
         self.maxTimer = 1
         self.currentIndex = 0
 
+    def connect(self, ip, port):
+        super().send(ip, port, b"SYN")
+        data, address = super().receive()
+        if data.decode() == "SYN-ACK":
+            self.rcvIp = ip
+            self.rcvPort = port
+            super().send(ip, port, b"ACK")
+
+    def disconnect(self):
+        super().send(self.rcvIp, self.rcvPort, b"FIN")
+        data, address = super().receive()
+        if data.decode() == "FIN-ACK":
+            super().send(self.rcvIp, self.rcvPort, b"ACK")
+        self.__del__()
+
     def send(self, ip, port, data):
         data = (str(self.currentIndex) + ":").encode() + data
         super().send(ip, port, data)
-        
         # if self.timer == None:
         self.timer = time.time()
         error = self.waitAck()
@@ -56,8 +75,7 @@ class Client(UDP_secure):
 
     def waitAck(self):
         while time.time() - self.timer < self.maxTimer:
-            data, address = self.socket.recvfrom(self.port)
-            print("Received:", data, "from", address, "in", time.time() - self.timer)
+            data, address = super().receive()
             message = (data.decode()).split(":")[0]
             if message == "Erro":
                 print(data.decode())
@@ -84,15 +102,34 @@ class Server(UDP_secure):
         self.window = []
         for i in range(self.sequenceSize):
             self.window.append(False)
+
+    def waitConnection(self):
+        data, address = super().receive()
+        if data.decode() == "SYN":
+            super().send(address[0], address[1], b"SYN-ACK")
+            data, address = super().receive()
+            if data.decode() == "ACK":
+                self.sdnIp = address[0]
+                self.sdnPort = address[1]
+
+    def disconnect(self, address):
+        super().send(address[0], address[1], b"FIN-ACK")
+        self.sdnIp = None
+        self.sdnPort = None
+        data, address = super().receive()
+        if data.decode() == "ACK":
+            return
     
-    def receive(self, from_ip):
+    def receive(self):
         while True:
-            data, address = self.socket.recvfrom(self.buffer)
-            if random.randint(0, 1) >= 0.2:
-                print("Received:", data, "from", address)
-                sequenceNum = int((data.decode()).split(":")[0])
-                ack = self.markPkt(sequenceNum)
-                self.send(address[0], address[1], (ack).encode())
+            data, address = super().receive()
+            # if random.randint(0, 1) >= 0.2:
+            if data.decode() == "FIN":
+                self.disconnect(address)
+                return
+            sequenceNum = int((data.decode()).split(":")[0])
+            ack = self.markPkt(sequenceNum)
+            self.send(address[0], address[1], (ack).encode())
 
     def markPkt(self, index):
         if self.isNotInWindow(index):
