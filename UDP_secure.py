@@ -12,9 +12,6 @@ class UDP_secure:
         self.protocol = socket.SOCK_DGRAM
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind((self.ip, self.port))
-        self.windowSize = 8
-        self.sequenceSize = self.windowSize * 2 + 1
-        self.windowStart = 0
 
     def send(self, ip, port, data):
         self.socket.sendto(data, (ip, port))
@@ -42,14 +39,17 @@ class UDP_secure:
         self.socket.close()
 
 class Client(UDP_secure):
-    def __init__(self, ip, port, buff):
+    def __init__(self, ip, port, buff, wndSize= 8):
         super().__init__(ip, port, buff)
+        self.windowSize = wndSize
+        self.sequenceSize = self.windowSize * 2 + 1
+        self.windowStart = 0
         self.timer = None
         self.maxTimer = 1
         self.currentIndex = 0
 
     def connect(self, ip, port):
-        super().send(ip, port, b"SYN")
+        super().send(ip, port, ("SYN:" + str(self.sequenceSize) + "," + str(self.windowSize)).encode())
         data, address = super().receive()
         if data.decode() == "SYN-ACK":
             self.rcvIp = ip
@@ -99,13 +99,19 @@ class Client(UDP_secure):
 class Server(UDP_secure):
     def __init__(self, ip, port, buff):
         super().__init__(ip, port, buff)
-        self.window = []
-        for i in range(self.sequenceSize):
-            self.window.append(False)
+        self.window = None
 
     def waitConnection(self):
         data, address = super().receive()
-        if data.decode() == "SYN":
+        message = (data.decode()).split(":")
+        if message[0] == "SYN":
+            message = message[1].split(",")
+            self.sequenceSize = int(message[0])
+            self.windowSize = int(message[1])
+            self.windowStart = 0
+            self.window = []
+            for i in range(self.sequenceSize):
+                self.window.append(False)
             super().send(address[0], address[1], b"SYN-ACK")
             data, address = super().receive()
             if data.decode() == "ACK":
