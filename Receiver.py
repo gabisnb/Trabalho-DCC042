@@ -2,12 +2,12 @@ import socket
 import time
 import random
 
-from UDP_secure import UDP_secure
+from UDPSecure import UDPSecure
 
 
 
 #? --------------Server Class--------------
-class Server(UDP_secure):
+class Receiver(UDPSecure):
     def __init__(self, ip, port, buff, wndSize=8):
         super().__init__(ip, port, buff)
         self.windowSize = wndSize

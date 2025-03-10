@@ -1,7 +1,7 @@
-from Client import Client
+from Sender import Sender
 from config import *
 
-sender = Client(IP_sender, port_sender, buffer_sender)
+sender = Sender(IP_sender, port_sender, buffer_sender)
 key = ""
 sender.connect(IP_receiver, port_receiver)
 while key != "exit":

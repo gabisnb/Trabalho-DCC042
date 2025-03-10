@@ -1,6 +1,6 @@
-from Server import Server
+from Receiver import Receiver
 from config import *
 
-receiver = Server(IP_receiver, port_receiver, buffer_receiver)
+receiver = Receiver(IP_receiver, port_receiver, buffer_receiver)
 receiver.waitConnection()
 receiver.receive()

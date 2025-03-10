@@ -7,7 +7,7 @@ import socket
 
 
 #? --------------UDP_secure Class--------------
-class UDP_secure:
+class UDPSecure:
     def __init__(self, ip, port, buff):
         self.ip = ip
         self.port = port
