@@ -1,5 +1,6 @@
 import socket
-
+import time
+import asyncio
 
 
 
@@ -13,19 +14,37 @@ class UDPSecure:
         self.port = port
         self.buffer = buff
         self.protocol = socket.SOCK_DGRAM
+        self.timer = None
+        self.maxTimer = 1
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind((self.ip, self.port))
+        
+
+    async def updateTimer(self):
+        ''' Update the timer '''
+        self.timer = time.time()
+
+
+    async def waitAck(self):
+        ''' Wait for an ACK message from the receiver '''
+        # não estourou o temporizador
+        while time.time() - self.timer < self.maxTimer:
+            data, address = self.receive()
+
 
     def send(self, ip, port, data):
         self.socket.sendto(data, (ip, port))
         print("Enviou '" + data.decode() + "' com sucesso")
+
 
     def receive(self):
         data, address = self.socket.recvfrom(self.buffer)
         print("Recebeu:", data, "de", address)
         return data, address
 
+
     def isNotInWindow(self, index):
+        ''' Check if the index is not in the window '''
         wndSize = self.windowSize   # get window size
         wndStart = self.windowStart   # get window start
         wndEnd = (wndStart + wndSize)%self.sequenceSize   # calculate window end
@@ -37,6 +56,7 @@ class UDPSecure:
         # if index is before the window start and window end is at the beginning of the sequence, 
         #     return True
         return afterWndStart or beforeWndStart
+
 
     def __del__(self):
         self.socket.close()

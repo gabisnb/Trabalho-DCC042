@@ -1,6 +1,7 @@
 import socket
 import time
 import random
+import asyncio
 
 from UDPSecure import UDPSecure
 
@@ -46,19 +47,19 @@ class Sender(UDPSecure):
             return
         self.currentIndex = (self.currentIndex + 1) % self.sequenceSize
 
-    def waitAck(self):
-        while time.time() - self.timer < self.maxTimer:
-            data, address = super().receive()
-            message = (data.decode()).split(":")[0]
-            if message == "Erro":
-                print(data.decode())
-                return True
-            sequenceNum = int(message)
-            if sequenceNum == self.windowStart:
-                self.timer = time.time()
-            self.markPkt(sequenceNum)
-            return False
-        return True
+    # def waitAck(self):
+    #     while time.time() - self.timer < self.maxTimer:
+    #         data, address = super().receive()
+    #         message = (data.decode()).split(":")[0]
+    #         if message == "Erro":
+    #             print(data.decode())
+    #             return True
+    #         sequenceNum = int(message)
+    #         if sequenceNum == self.windowStart:
+    #             self.timer = time.time()
+    #         self.markPkt(sequenceNum)
+    #         return False
+    #     return True
 
     def markPkt(self, index):
         if self.isNotInWindow(index):
