@@ -1,7 +1,7 @@
-import UDP_secure
+from Client import Client
 from config import *
 
-sender = UDP_secure.Client(IP_sender, port_sender, buffer_sender)
+sender = Client(IP_sender, port_sender, buffer_sender)
 key = ""
 sender.connect(IP_receiver, port_receiver)
 while key != "exit":
