@@ -4,6 +4,8 @@ import random
 
 __all__ = ['UDP_buffed']
 
+
+#? --------------UDP_secure Class--------------
 class UDP_secure:
     def __init__(self, ip, port, buff):
         self.ip = ip
@@ -38,20 +40,27 @@ class UDP_secure:
     def __del__(self):
         self.socket.close()
 
+
+
+#? --------------Client Class--------------
 class Client(UDP_secure):
-    def __init__(self, ip, port, buff, wndSize= 8):
+    def __init__(self, ip, port, buff):
         super().__init__(ip, port, buff)
-        self.windowSize = wndSize
-        self.sequenceSize = self.windowSize * 2 + 1
+        self.windowSize = 0
+        self.sequenceSize = 0
         self.windowStart = 0
         self.timer = None
         self.maxTimer = 1
         self.currentIndex = 0
 
     def connect(self, ip, port):
-        super().send(ip, port, ("SYN:" + str(self.sequenceSize) + "," + str(self.windowSize)).encode())
+        super().send(ip, port, b"SYN")
         data, address = super().receive()
-        if data.decode() == "SYN-ACK":
+        messages = data.decode().split(",")
+        if messages[0] == "SYN-ACK":
+            self.sequenceSize = int(messages[1])
+            self.windowSize = int(messages[2])
+            self.windowStart = 0
             self.rcvIp = ip
             self.rcvPort = port
             super().send(ip, port, b"ACK")
@@ -96,27 +105,33 @@ class Client(UDP_secure):
     def moveWindow(self, index):
         self.windowStart = (index + 1) % self.sequenceSize
 
+
+
+
+#? --------------Server Class--------------
 class Server(UDP_secure):
-    def __init__(self, ip, port, buff):
+    def __init__(self, ip, port, buff, wndSize=8):
         super().__init__(ip, port, buff)
-        self.window = None
+        self.windowSize = wndSize
+        self.sequenceSize = self.windowSize * 2 + 1
+        self.windowStart = 0
+        self.window = []
+        for i in range(self.sequenceSize):
+            self.window.append(False)
 
     def waitConnection(self):
         data, address = super().receive()
-        message = (data.decode()).split(":")
-        if message[0] == "SYN":
-            message = message[1].split(",")
-            self.sequenceSize = int(message[0])
-            self.windowSize = int(message[1])
-            self.windowStart = 0
-            self.window = []
-            for i in range(self.sequenceSize):
-                self.window.append(False)
-            super().send(address[0], address[1], b"SYN-ACK")
+        message = data.decode()
+        if message == "SYN":
+            super().send(address[0], address[1], ("SYN-ACK,"  + str(self.sequenceSize) + "," + str(self.windowSize)).encode())
             data, address = super().receive()
             if data.decode() == "ACK":
                 self.sdnIp = address[0]
                 self.sdnPort = address[1]
+            else:
+                print("Erro: Resposta inesperada")
+        else:
+            print("Erro: Resposta inesperada")
 
     def disconnect(self, address):
         super().send(address[0], address[1], b"FIN-ACK")
