@@ -20,7 +20,7 @@ class Sender(UDPSecure):
 
     def connect(self, ip, port):
         super().send(ip, port, b"SYN")
-        data, address = super().receive()
+        data, address, pktSize = super().receive()
         messages = data.decode().split(",")
         if messages[0] == "SYN-ACK":
             self.sequenceSize = int(messages[1])
@@ -29,43 +29,46 @@ class Sender(UDPSecure):
             self.rcvIp = ip
             self.rcvPort = port
             super().send(ip, port, b"ACK")
+            print("números de sequencia:" + str(self.sequenceSize))
 
     def disconnect(self):
         super().send(self.rcvIp, self.rcvPort, b"FIN")
-        data, address = super().receive()
+        data, address, pktSize = super().receive()
         if data.decode() == "FIN-ACK":
             super().send(self.rcvIp, self.rcvPort, b"ACK")
         self.__del__()
 
     def send(self, ip, port, data):
         data = (str(self.currentIndex) + ":").encode() + data
+        if self.currentIndex == self.windowStart:
+            self.timer = time.time()
         super().send(ip, port, data)
-        # if self.timer == None:
         self.timer = time.time()
         error = self.waitAck()
         if error:
             return
-        self.currentIndex = (self.currentIndex + 1) % self.sequenceSize
+        self.currentIndex = (self.currentIndex + len(data)) % self.sequenceSize
 
-    # def waitAck(self):
-    #     while time.time() - self.timer < self.maxTimer:
-    #         data, address = super().receive()
-    #         message = (data.decode()).split(":")[0]
-    #         if message == "Erro":
-    #             print(data.decode())
-    #             return True
-    #         sequenceNum = int(message)
-    #         if sequenceNum == self.windowStart:
-    #             self.timer = time.time()
-    #         self.markPkt(sequenceNum)
-    #         return False
-    #     return True
+    def waitAck(self):
+        while time.time() - self.timer < self.maxTimer:
+            data, address, pktSize = super().receive()
+            metadata = self.extractMetadata(data)
+            if metadata[0] == "Erro" or len(metadata)!=2:
+                print(data.decode())
+                return True
+            nextPkt = metadata[0]
+            availableBuff = metadata[1]
+            sequenceNum = int(nextPkt)
+            if sequenceNum != self.windowStart:
+                self.timer = time.time()
+            self.markPkt(sequenceNum)
+            return False
+        return True
 
     def markPkt(self, index):
-        if self.isNotInWindow(index):
-            return "Erro: Pacote fora da janela " + str(self.windowStart) + " a " + str((self.windowStart + self.windowSize-1)%self.sequenceSize)
-        self.moveWindow(index)
-        return str(index) + ": Recebido!"
-
-    def moveWindow(self, index):
-        self.windowStart = (index + 1) % self.sequenceSize
+        # if self.isNotInWindow(index):
+        #     return "Erro: Pacote fora da janela " + str(self.windowStart) + " a " + str((self.windowStart + self.windowSize-1)%self.sequenceSize)
+        previousStart = self.windowStart
+        self.windowStart = index
+        self.timer = time.time()
+        return str(previousStart) + " a " + str(index-1%self.sequenceSize) + ": Recebido!"

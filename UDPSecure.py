@@ -39,8 +39,14 @@ class UDPSecure:
 
     def receive(self):
         data, address = self.socket.recvfrom(self.buffer)
+        pktSize = len(data)
         print("Recebeu:", data, "de", address)
-        return data, address
+        return data, address, pktSize
+    
+    def extractMetadata(self, data):
+        components = (data.decode()).split(":")
+        metadata = components[0].split(",")
+        return metadata
 
 
     def isNotInWindow(self, index):

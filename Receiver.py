@@ -8,9 +8,10 @@ from UDPSecure import UDPSecure
 
 #? --------------Server Class--------------
 class Receiver(UDPSecure):
-    def __init__(self, ip, port, buff, wndSize=8):
+    def __init__(self, ip, port, buff):
         super().__init__(ip, port, buff)
-        self.windowSize = wndSize
+        self.availableBuff = buff
+        self.windowSize = self.availableBuff
         self.sequenceSize = self.windowSize * 2 + 1
         self.windowStart = 0
         self.window = []
@@ -18,11 +19,11 @@ class Receiver(UDPSecure):
             self.window.append(False)
 
     def waitConnection(self):
-        data, address = super().receive()
+        data, address, pktSize = super().receive()
         message = data.decode()
         if message == "SYN":
             super().send(address[0], address[1], ("SYN-ACK,"  + str(self.sequenceSize) + "," + str(self.windowSize)).encode())
-            data, address = super().receive()
+            data, address, pktSize = super().receive()
             if data.decode() == "ACK":
                 self.sdnIp = address[0]
                 self.sdnPort = address[1]
@@ -35,30 +36,34 @@ class Receiver(UDPSecure):
         super().send(address[0], address[1], b"FIN-ACK")
         self.sdnIp = None
         self.sdnPort = None
-        data, address = super().receive()
+        data, address, pktSize = super().receive()
         if data.decode() == "ACK":
             return
     
     def receive(self):
         while True:
-            data, address = super().receive()
+            data, address, pktSize = super().receive()
             # if random.randint(0, 1) >= 0.2:
             if data.decode() == "FIN":
                 self.disconnect(address)
                 return
             sequenceNum = int((data.decode()).split(":")[0])
-            ack = self.markPkt(sequenceNum)
+            ack = self.markPkt(sequenceNum, pktSize)
             self.send(address[0], address[1], (ack).encode())
 
-    def markPkt(self, index):
+    def markPkt(self, index, pktSize):
         if self.isNotInWindow(index):
             if self.window[index]:
                 return str(index) + ": Recebido!"
             return "Erro: Pacote fora da janela " + str(self.windowStart) + " a " + str((self.windowStart + self.windowSize-1)%self.sequenceSize)
-        self.window[index] = True
+        for i in range(pktSize):
+            self.window[(index + i)%self.sequenceSize] = True
+        self.availableBuff = self.availableBuff - pktSize
         self.moveWindow()
-        return str((self.windowStart-1)%self.sequenceSize) + ": Recebido!"
-
+        nextPkt = str(index+pktSize%self.sequenceSize)
+        ack = nextPkt + "," + str(self.availableBuff) + ": Recebido!"
+        return ack
+    
     def moveWindow(self):
         i = self.windowStart
 
@@ -66,5 +71,6 @@ class Receiver(UDPSecure):
         while self.window[i]:
             # self.window[i] = False
             self.window[(i+self.windowSize)%self.sequenceSize] = False
+            self.availableBuff = self.availableBuff + 1
             i = (i+1)%self.sequenceSize # Garante que i será um nº de sequência válido
         self.windowStart = i
