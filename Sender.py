@@ -36,7 +36,6 @@ class Sender(UDPSecure):
         data, address, pktSize = super().receive()
         if data.decode() == "FIN-ACK":
             super().send(self.rcvIp, self.rcvPort, b"ACK")
-        self.__del__()
 
     def send(self, ip, port, data):
         data = (str(self.currentIndex) + ":").encode() + data
@@ -61,7 +60,7 @@ class Sender(UDPSecure):
             sequenceNum = int(nextPkt)
             if sequenceNum != self.windowStart:
                 self.timer = time.time()
-            self.markPkt(sequenceNum)
+            print(self.markPkt(sequenceNum))
             return False
         return True
 
@@ -70,5 +69,9 @@ class Sender(UDPSecure):
         #     return "Erro: Pacote fora da janela " + str(self.windowStart) + " a " + str((self.windowStart + self.windowSize-1)%self.sequenceSize)
         previousStart = self.windowStart
         self.windowStart = index
-        self.timer = time.time()
+        self.updateTimer()
         return str(previousStart) + " a " + str(index-1%self.sequenceSize) + ": Recebido!"
+    
+    def __del__(self):
+        self.disconnect()
+        super().__del__()

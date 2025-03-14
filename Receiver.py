@@ -37,8 +37,12 @@ class Receiver(UDPSecure):
         self.sdnIp = None
         self.sdnPort = None
         data, address, pktSize = super().receive()
-        if data.decode() == "ACK":
-            return
+        self.updateTimer()
+        while time.time() - self.timer < self.maxTimer:
+            data, address, pktSize = super().receive()
+            if data.decode() == "ACK":
+                break
+        self.__delete__()
     
     def receive(self):
         while True:
@@ -46,7 +50,6 @@ class Receiver(UDPSecure):
             # if random.randint(0, 1) >= 0.2:
             if data.decode() == "FIN":
                 self.disconnect(address)
-                return
             sequenceNum = int((data.decode()).split(":")[0])
             ack = self.markPkt(sequenceNum, pktSize)
             self.send(address[0], address[1], (ack).encode())
