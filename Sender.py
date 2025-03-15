@@ -25,7 +25,7 @@ class Sender(UDPSecure):
 
     def connect(self, ip, port):
         super().send(ip, port, b"SYN")
-        data, address = super().receive()
+        data, address, pktSize = super().receive()
         messages = data.decode().split(",")
         if messages[0] == "SYN-ACK":
             self.sequenceSize = int(messages[1])
@@ -34,19 +34,21 @@ class Sender(UDPSecure):
             self.rcvIp = ip
             self.rcvPort = port
             super().send(ip, port, b"ACK")
+            print("números de sequencia:" + str(self.sequenceSize))
 
     def disconnect(self):
         super().send(self.rcvIp, self.rcvPort, b"FIN")
-        data, address = super().receive()
+        data, address, pktSize = super().receive()
         if data.decode() == "FIN-ACK":
             super().send(self.rcvIp, self.rcvPort, b"ACK")
-        self.__del__()
 
     def send(self, ip, port, data):
         if self.cwnd <= 0:
             return  # Avoid sending if congestion window is 0
         
         data = (str(self.currentIndex) + ":").encode() + data
+        if self.currentIndex == self.windowStart:
+            self.timer = time.time()
         super().send(ip, port, data)
         self.timer = time.time()
         error, ack = self.waitAck()
@@ -107,12 +109,17 @@ class Sender(UDPSecure):
         self.dup_ack_count = 0  # Reset duplicate ACK counter
         print(f"Updated cwnd: {self.cwnd}, ssthresh: {self.ssthresh}")
 
-    def markPkt(self, index):
-        if self.isNotInWindow(index):
-            return "Erro: Pacote fora da janela " + str(self.windowStart) + " a " + str((self.windowStart + self.windowSize-1) % self.sequenceSize)
-        self.moveWindow(index)
-        return str(index) + ": Recebido!"
-
     def moveWindow(self, index):
         self.windowStart = (index + 1) % self.sequenceSize
 
+    def markPkt(self, index):
+        # if self.isNotInWindow(index):
+        #     return "Erro: Pacote fora da janela " + str(self.windowStart) + " a " + str((self.windowStart + self.windowSize-1)%self.sequenceSize)
+        previousStart = self.windowStart
+        self.windowStart = index
+        self.updateTimer()
+        return str(previousStart) + " a " + str(index-1%self.sequenceSize) + ": Recebido!"
+    
+    def __del__(self):
+        self.disconnect()
+        super().__del__()

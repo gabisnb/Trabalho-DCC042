@@ -20,12 +20,12 @@ class UDPSecure:
         self.socket.bind((self.ip, self.port))
         
 
-    async def updateTimer(self):
+    def updateTimer(self):
         ''' Update the timer '''
         self.timer = time.time()
 
 
-    async def waitAck(self):
+    def waitAck(self):
         ''' Wait for an ACK message from the receiver '''
         # não estourou o temporizador
         while time.time() - self.timer < self.maxTimer:
@@ -39,8 +39,14 @@ class UDPSecure:
 
     def receive(self):
         data, address = self.socket.recvfrom(self.buffer)
+        pktSize = len(data)
         print("Recebeu:", data, "de", address)
-        return data, address
+        return data, address, pktSize
+    
+    def extractMetadata(self, data):
+        components = (data.decode()).split(":")
+        metadata = components[0].split(",")
+        return metadata
 
 
     def isNotInWindow(self, index):
