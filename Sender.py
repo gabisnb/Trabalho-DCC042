@@ -65,30 +65,36 @@ class Sender(UDPSecure):
         while time.time() - self.timer < self.maxTimer:
             data, address = super().receive()
             message = data.decode().split(":")[0]
-            
+
             if message == "Erro":
                 print(data.decode())
-                return True, None
+                return True, None  # Packet loss detected
             
             sequenceNum = int(message)
+            
             if sequenceNum == self.last_ack:
                 self.dup_ack_count += 1
                 if self.dup_ack_count == 3:
                     self.handle_fast_retransmit()
+                    return False, sequenceNum  # Stop waiting once fast retransmit happens
             else:
-                self.dup_ack_count = 0
+                self.dup_ack_count = 0  # Reset counter
                 self.last_ack = sequenceNum
-            
-            return False, sequenceNum
+
+            return False, sequenceNum  # Return False if ACK is valid
         
-        return True, None
+        return True, None  # Timeout case
+
 
     def handle_loss(self):
         """Handles congestion event (packet loss)."""
         print("Packet loss detected! Reducing congestion window.")
         self.ssthresh = max(self.cwnd // 2, 1)
-        self.cwnd = 1  # Reset to slow start
+        
+        # 🚀 Reno: Set cwnd to ssthresh instead of 1
+        self.cwnd = self.ssthresh  
         self.dup_ack_count = 0
+
 
     def handle_fast_retransmit(self):
         """Handles Fast Retransmit when three duplicate ACKs are received."""
@@ -96,6 +102,7 @@ class Sender(UDPSecure):
         self.ssthresh = max(self.cwnd // 2, 1)
         self.cwnd = self.ssthresh  # Reduce cwnd but avoid slow start
         self.dup_ack_count = 0  # Reset duplicate ACK counter
+
 
     def handle_ack(self, ack):
         """Handles successful ACK reception and updates congestion control."""
