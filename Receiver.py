@@ -33,16 +33,20 @@ class Receiver(UDPSecure):
             print("Erro: Resposta inesperada")
 
     def disconnect(self, address):
-        super().send(address[0], address[1], b"FIN-ACK")
-        self.sdnIp = None
-        self.sdnPort = None
-        data, address, pktSize = super().receive()
-        self.updateTimer()
-        while time.time() - self.timer < self.maxTimer:
+        try:
+            super().send(address[0], address[1], b"FIN-ACK")
+            self.sdnIp = None
+            self.sdnPort = None
             data, address, pktSize = super().receive()
-            if data.decode() == "ACK":
-                break
-        self.__delete__()
+            self.updateTimer()
+            while time.time() - self.timer < self.maxTimer:
+                data, address, pktSize = super().receive()
+                if data.decode() == "ACK":
+                    break
+            self.__del__()
+        except Exception as e:
+            print(Exception)
+            self.__del__()
     
     def receive(self):
         while True:
@@ -51,12 +55,12 @@ class Receiver(UDPSecure):
             if data.decode() == "FIN":
                 self.disconnect(address)
 
-            sequenceNum = int((data.decode()).split(":")[0])
+            sequenceNum = int(self.extractMetadata(data)[0])
 
             # Simulação de perda de pacotes (15% de perda, por exemplo)
-            if random.random() < 0.15:
-                print(f"Pacote {sequenceNum} perdido!")
-                continue  # Pacote descartado, não envia ACK
+            # if random.random() < 0.15:
+            #     print(f"Pacote {sequenceNum} perdido!")
+            #     continue  # Pacote descartado, não envia ACK
 
             ack = self.markPkt(sequenceNum, pktSize)
             self.send(address[0], address[1], ack.encode())

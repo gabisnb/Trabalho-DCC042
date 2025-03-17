@@ -37,10 +37,13 @@ class Sender(UDPSecure):
             print("números de sequencia:" + str(self.sequenceSize))
 
     def disconnect(self):
-        super().send(self.rcvIp, self.rcvPort, b"FIN")
-        data, address, pktSize = super().receive()
-        if data.decode() == "FIN-ACK":
-            super().send(self.rcvIp, self.rcvPort, b"ACK")
+        try:
+            super().send(self.rcvIp, self.rcvPort, b"FIN")
+            data, address, pktSize = super().receive()
+            if data.decode() == "FIN-ACK":
+                super().send(self.rcvIp, self.rcvPort, b"ACK")
+        except Exception as e:
+            print(Exception)
 
     def send(self, data):
         if self.cwnd <= 0:
