@@ -1,6 +1,7 @@
 import socket
 import time
 import random
+import base64
 
 from UDPSecure import UDPSecure
 
@@ -8,13 +9,15 @@ from UDPSecure import UDPSecure
 
 #? --------------Server Class--------------
 class Receiver(UDPSecure):
-    def __init__(self, ip, port, buff):
+    def __init__(self, ip, port, buff, destination = 'data_rcv.bin'):
         super().__init__(ip, port, buff)
         self.availableBuff = buff
         self.windowSize = self.availableBuff
         self.sequenceSize = self.windowSize * 2 + 1
         self.windowStart = 0
         self.window = []
+        self.pkts = []
+        self.file = open(destination, 'r+b')
         for i in range(self.sequenceSize):
             self.window.append(False)
 
@@ -42,11 +45,9 @@ class Receiver(UDPSecure):
             while time.time() - self.timer < self.maxTimer:
                 data, address, pktSize = super().receive()
                 if data.decode() == "ACK":
-                    break
-            self.__del__()
+                    return
         except Exception as e:
             print(Exception)
-            self.__del__()
     
     def receive(self):
         while True:
@@ -54,14 +55,18 @@ class Receiver(UDPSecure):
 
             if data.decode() == "FIN":
                 self.disconnect(address)
-
-            sequenceNum = int(self.extractMetadata(data)[0])
+                self.__del__()
+                return
+            
+            metadata, bin_data = self.extractMetadata(data)
+            sequenceNum = int(metadata[0])
 
             # Simulação de perda de pacotes (15% de perda, por exemplo)
             # if random.random() < 0.15:
             #     print(f"Pacote {sequenceNum} perdido!")
             #     continue  # Pacote descartado, não envia ACK
-
+            
+            # self.pkts.append(base64.b64encode(data))
             ack = self.markPkt(sequenceNum, pktSize)
             self.send(address[0], address[1], ack.encode())
     def markPkt(self, index, pktSize):
@@ -83,7 +88,12 @@ class Receiver(UDPSecure):
         # Move início da janela até primeiro pacote não confirmado
         while self.window[i]:
             # self.window[i] = False
+            # if not (self.pkts) and i%len(self.pkts.__getitem__(0)) == 0:
+            #     self.file.write(self.pkts.pop(0))
             self.window[(i+self.windowSize)%self.sequenceSize] = False
             self.availableBuff = self.availableBuff + 1
             i = (i+1)%self.sequenceSize # Garante que i será um nº de sequência válido
         self.windowStart = i
+
+    def __del__(self):
+        super().__del__()

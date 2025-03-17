@@ -46,7 +46,7 @@ class UDPSecure:
     def extractMetadata(self, data):
         components = (data.decode()).split(":")
         metadata = components[0].split(",")
-        return metadata
+        return metadata, components[1].encode()
 
 
     def isNotInWindow(self, index):

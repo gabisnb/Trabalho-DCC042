@@ -4,17 +4,17 @@ import random
 from Sender import Sender
 from Receiver import Receiver
 from config import *
+import base64
 
 # Configurações
 data_file = "test_data.bin"
-BUFFER_SIZE = 1024
 NUM_PACKETS = 10000
 
 # Criar arquivo de 10MB para simulação
 def generate_data_file():
     print("Gerando arquivo de teste...")
     with open(data_file, "wb") as f:
-        f.write(bytearray(random.getrandbits(8) for _ in range(NUM_PACKETS * BUFFER_SIZE)))
+        f.write(bytearray(random.getrandbits(8) for _ in range(NUM_PACKETS * buffer_receiver)))
     print("Arquivo gerado com sucesso!")
 
 # Função para iniciar o Receiver (Servidor)
@@ -31,7 +31,8 @@ def start_sender():
     
     with open(data_file, "rb") as f:
         for _ in range(NUM_PACKETS):
-            chunk = f.read(BUFFER_SIZE)
+            chunk = f.read(sender.windowSize)
+            chunk = base64.b64encode(chunk)
             if not chunk:
                 break
             sender.send(chunk)

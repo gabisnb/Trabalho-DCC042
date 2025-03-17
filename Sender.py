@@ -67,10 +67,10 @@ class Sender(UDPSecure):
         """Wait for an ACK and check for duplicate ACKs."""
         while time.time() - self.timer < self.maxTimer:
             data, address, pktSize = super().receive()
-            metadata = self.extractMetadata(data)
+            metadata, bin_data = self.extractMetadata(data)
 
             if metadata[0] == "Erro":
-                print(data.decode())
+                print(metadata)
                 return True, None  # Packet loss detected
             
             sequenceNum = int(metadata[0])
