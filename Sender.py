@@ -42,14 +42,14 @@ class Sender(UDPSecure):
         if data.decode() == "FIN-ACK":
             super().send(self.rcvIp, self.rcvPort, b"ACK")
 
-    def send(self, ip, port, data):
+    def send(self, data):
         if self.cwnd <= 0:
             return  # Avoid sending if congestion window is 0
         
         data = (str(self.currentIndex) + ":").encode() + data
         if self.currentIndex == self.windowStart:
             self.timer = time.time()
-        super().send(ip, port, data)
+        super().send(self.rcvIp, self.rcvPort, data)
         self.timer = time.time()
         error, ack = self.waitAck()
         
@@ -63,14 +63,14 @@ class Sender(UDPSecure):
     def waitAck(self):
         """Wait for an ACK and check for duplicate ACKs."""
         while time.time() - self.timer < self.maxTimer:
-            data, address = super().receive()
-            message = data.decode().split(":")[0]
+            data, address, pktSize = super().receive()
+            metadata = self.extractMetadata(data)
 
-            if message == "Erro":
+            if metadata[0] == "Erro":
                 print(data.decode())
                 return True, None  # Packet loss detected
             
-            sequenceNum = int(message)
+            sequenceNum = int(metadata[0])
             
             if sequenceNum == self.last_ack:
                 self.dup_ack_count += 1
