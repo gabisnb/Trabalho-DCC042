@@ -1,13 +1,12 @@
 import threading
 import time
 import random
-from sender import Sender
-from receiver import Receiver
+from Sender import Sender
+from Receiver import Receiver
+from config import *
 
 # Configurações
 data_file = "test_data.bin"
-IP = "127.0.0.1"
-PORT = 5000
 BUFFER_SIZE = 1024
 NUM_PACKETS = 10000
 
@@ -20,21 +19,22 @@ def generate_data_file():
 
 # Função para iniciar o Receiver (Servidor)
 def start_receiver():
-    receiver = Receiver(IP, PORT, BUFFER_SIZE)
+    receiver = Receiver(IP_receiver, port_receiver, buffer_receiver)
     print("Receiver iniciado. Aguardando pacotes...")
+    receiver.waitConnection()
     receiver.receive()
 
 # Função para iniciar o Sender (Cliente) e enviar o arquivo
 def start_sender():
-    sender = Sender(IP, PORT, BUFFER_SIZE)
-    sender.connect(IP, PORT)
+    sender = Sender(IP_sender, port_sender, buffer_sender)
+    sender.connect(IP_receiver, port_receiver)
     
     with open(data_file, "rb") as f:
         for _ in range(NUM_PACKETS):
             chunk = f.read(BUFFER_SIZE)
             if not chunk:
                 break
-            sender.send(IP, PORT, chunk)
+            sender.send(chunk)
             time.sleep(0.001)  # Pequeno delay para simular transmissão real
     
     sender.disconnect()
