@@ -47,13 +47,19 @@ class Receiver(UDPSecure):
     def receive(self):
         while True:
             data, address, pktSize = super().receive()
-            # if random.randint(0, 1) >= 0.2:
+
             if data.decode() == "FIN":
                 self.disconnect(address)
-            sequenceNum = int((data.decode()).split(":")[0])
-            ack = self.markPkt(sequenceNum, pktSize)
-            self.send(address[0], address[1], (ack).encode())
 
+            sequenceNum = int((data.decode()).split(":")[0])
+
+            # Simulação de perda de pacotes (15% de perda, por exemplo)
+            if random.random() < 0.15:
+                print(f"Pacote {sequenceNum} perdido!")
+                continue  # Pacote descartado, não envia ACK
+
+            ack = self.markPkt(sequenceNum, pktSize)
+            self.send(address[0], address[1], ack.encode())
     def markPkt(self, index, pktSize):
         if self.isNotInWindow(index):
             if self.window[index]:
