@@ -31,6 +31,7 @@ class Receiver(UDPSecure):
             if data.decode() == "ACK":
                 self.sdnIp = address[0]
                 self.sdnPort = address[1]
+                self.socket.settimeout(self.maxTimer)
             else:
                 print("Erro: Resposta inesperada")
         else:
@@ -81,9 +82,9 @@ class Receiver(UDPSecure):
                 sequenceNum = int(metadata[0])
 
                 # Simulação de perda de pacotes
-                # if random.random() < 0.15:
-                #     print(f"Pacote {sequenceNum} perdido!")
-                #     continue  
+                if random.random() < 0.15:
+                    print(f"Pacote {sequenceNum} perdido!")
+                    continue  
                 
                 ack = self.markPkt(sequenceNum, pktSize)
                 self.send(address[0], address[1], ack.encode())
