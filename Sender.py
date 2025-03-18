@@ -14,8 +14,8 @@ class Sender(UDPSecure):
         self.windowSize = 0
         self.sequenceSize = 0
         self.windowStart = 0
-        self.timer = None
-        self.maxTimer = 1
+        self.timer = 0.0
+        self.maxTimer = 3.0
         self.currentIndex = 0
         
         # Congestion Control Variables
@@ -75,33 +75,45 @@ class Sender(UDPSecure):
 
     def waitAck(self):
         """Wait for an ACK and check for duplicate ACKs."""
-        while time.time() - self.timer < self.maxTimer:
-            data, address, pktSize = super().receive()
-            metadata, bin_data = self.extractMetadata(data)
+        # while time.time() - self.timer < self.maxTimer:
+        #     data, address, pktSize = super().receive()
+        #     metadata, bin_data = self.extractMetadata(data)
 
-            if metadata[0] == "Erro":
-                print(metadata)
-                return True, None  # Packet loss detected
+        #     if metadata[0] == "Erro":
+        #         print(metadata)
+        #         return True, None  # Packet loss detected
             
-            sequenceNum = int(metadata[0])
+        #     sequenceNum = int(metadata[0])
             
-            if sequenceNum == self.last_ack:
-                self.dup_ack_count += 1
-                if self.dup_ack_count == 3:
-                    self.handle_fast_retransmit()
-                    return False, sequenceNum  # Stop waiting once fast retransmit happens
-            else:
-                self.dup_ack_count = 0  # Reset counter
-                self.last_ack = sequenceNum
+        #     if sequenceNum == self.last_ack:
+        #         self.dup_ack_count += 1
+        #         if self.dup_ack_count == 3:
+        #             self.handle_fast_retransmit()
+        #             return False, sequenceNum  # Stop waiting once fast retransmit happens
+        #     else:
+        #         self.dup_ack_count = 0  # Reset counter
+        #         self.last_ack = sequenceNum
 
-            return False, sequenceNum  # Return False if ACK is valid
+        #     return False, sequenceNum  # Return False if ACK is valid
         
-        return True, None  # Timeout case
+        # return True, None  # Timeout case
+        self.socket.settimeout(self.maxTimer)  # Set timeout
+        try:
+            data, address = self.socket.recvfrom(self.buffer)
+            metadata, bin_data = self.extractMetadata(data)
+            sequenceNum = int(metadata[0])
+            if sequenceNum == self.currentIndex:
+                return False, sequenceNum
+            else:
+                return True, None
+        except socket.timeout:
+            print("Timeout occurred! No ACK received.")
+            return True, None
 
 
     def handle_loss(self):
         """Handles congestion event (packet loss)."""
-        print("Packet loss detected! Reducing congestion window.")
+        print("Packet loss detected! Reducing congestion window from {} to {}.".format(self.cwnd, max(self.cwnd // 2, 1)))
         self.ssthresh = max(self.cwnd // 2, 1)
         
         # 🚀 Reno: Set cwnd to ssthresh instead of 1

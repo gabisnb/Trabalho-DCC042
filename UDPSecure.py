@@ -14,8 +14,8 @@ class UDPSecure:
         self.port = port
         self.buffer = buff
         self.protocol = socket.SOCK_DGRAM
-        self.timer = None
-        self.maxTimer = 1
+        self.timer = 0.0
+        self.maxTimer = 3.0
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind((self.ip, self.port))
         
@@ -28,19 +28,27 @@ class UDPSecure:
     def waitAck(self):
         ''' Wait for an ACK message from the receiver '''
         # não estourou o temporizador
-        while time.time() - self.timer < self.maxTimer:
-            data, address = self.receive()
+        # while time.time() - self.timer < self.maxTimer:
+        #     data, address = self.receive()
+        print(f"Waiting for ACK... Time elapsed: {time.time() - self.timer:.2f}")
+        self.socket.settimeout(self.maxTimer)  # Set timeout
+        try:
+            data, address = self.socket.recvfrom(self.buffer)
+        except socket.timeout:
+            print("Timeout occurred! No ACK received.")
+            return True  # Indicate timeout
+
 
 
     def send(self, ip, port, data):
         self.socket.sendto(data, (ip, port))
-        print("Enviou '" + data.decode() + "' com sucesso")
+        print("Enviou '" + data.decode()[:10] + "' com sucesso")
 
 
     def receive(self):
         data, address = self.socket.recvfrom(self.buffer)
         pktSize = len(data)
-        print("Recebeu:", data, "de", address)
+        print("Recebeu:", data[:10], "de", address)
         return data, address, pktSize
     
     def extractMetadata(self, data):

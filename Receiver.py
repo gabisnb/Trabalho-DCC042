@@ -81,9 +81,11 @@ class Receiver(UDPSecure):
                 sequenceNum = int(metadata[0])
 
                 # Simulação de perda de pacotes
-                # if random.random() < 0.15:
-                #     print(f"Pacote {sequenceNum} perdido!")
-                #     continue  
+                if data.decode() != "SYN-ACK" or data.decode() != "ACK" or data.decode() != "FIN-ACK" or data.decode() != "FIN" or data.decode() != "SYN":
+                    prob_loss = random.random()
+                    if prob_loss < 0.15:
+                        print(f"Pacote {sequenceNum} perdido!")
+                        continue  
                 
                 ack = self.markPkt(sequenceNum, pktSize)
                 self.send(address[0], address[1], ack.encode())
