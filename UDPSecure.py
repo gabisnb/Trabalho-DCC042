@@ -38,13 +38,10 @@ class UDPSecure:
 
 
     def receive(self):
-        try:
-            data, address = self.socket.recvfrom(self.buffer)
-            pktSize = len(data)
-            print("Recebeu:", data, "de", address)
-            return data, address, pktSize
-        except Exception as e:
-            raise e
+        data, address = self.socket.recvfrom(self.buffer)
+        pktSize = len(data)
+        print("Recebeu:", data, "de", address)
+        return data, address, pktSize
     
     def extractMetadata(self, data):
         components = (data.decode()).split(":")

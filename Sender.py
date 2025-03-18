@@ -17,7 +17,6 @@ class Sender(UDPSecure):
         self.timer = None
         self.maxTimer = 1
         self.currentIndex = 0
-        self.socket.settimeout(self.maxTimer)
         
         # Congestion Control Variables
         self.cwnd = 1  # Start with 1 packet
@@ -75,31 +74,29 @@ class Sender(UDPSecure):
         self.currentIndex = (self.currentIndex + 1) % self.sequenceSize
 
     def waitAck(self):
-        try:
-            """Wait for an ACK and check for duplicate ACKs."""
-            while time.time() - self.timer < self.maxTimer:
-                data, address, pktSize = super().receive()
-                metadata, bin_data = self.extractMetadata(data)
+        """Wait for an ACK and check for duplicate ACKs."""
+        while time.time() - self.timer < self.maxTimer:
+            data, address, pktSize = super().receive()
+            metadata, bin_data = self.extractMetadata(data)
 
-                if metadata[0] == "Erro":
-                    print(metadata)
-                    return True, None  # Packet loss detected
-                
-                sequenceNum = int(metadata[0])
-                
-                if sequenceNum == self.last_ack:
-                    self.dup_ack_count += 1
-                    if self.dup_ack_count == 3:
-                        self.handle_fast_retransmit()
-                        return False, sequenceNum  # Stop waiting once fast retransmit happens
-                else:
-                    self.dup_ack_count = 0  # Reset counter
-                    self.last_ack = sequenceNum
+            if metadata[0] == "Erro":
+                print(metadata)
+                return True, None  # Packet loss detected
+            
+            sequenceNum = int(metadata[0])
+            
+            if sequenceNum == self.last_ack:
+                self.dup_ack_count += 1
+                if self.dup_ack_count == 3:
+                    self.handle_fast_retransmit()
+                    return False, sequenceNum  # Stop waiting once fast retransmit happens
+            else:
+                self.dup_ack_count = 0  # Reset counter
+                self.last_ack = sequenceNum
 
-                return False, sequenceNum  # Return False if ACK is valid
-        except TimeoutError as e:
-            # print("Timeout!")
-            return True, None  # Timeout case
+            return False, sequenceNum  # Return False if ACK is valid
+        
+        return True, None  # Timeout case
 
 
     def handle_loss(self):
