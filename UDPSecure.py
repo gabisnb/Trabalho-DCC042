@@ -24,6 +24,12 @@ class UDPSecure:
         ''' Update the timer '''
         self.timer = time.time()
 
+    def setTimer(self):
+        self.updateTimer()
+        while True:
+            if time.time() - self.timer > self.maxTimer:
+                return
+
 
     def waitAck(self):
         ''' Wait for an ACK message from the receiver '''
@@ -46,14 +52,14 @@ class UDPSecure:
     def extractMetadata(self, data):
         components = (data.decode()).split(":")
         metadata = components[0].split(",")
-        return metadata, components[1].encode()
+        return metadata, components[1]
 
 
     def isNotInWindow(self, index):
         ''' Check if the index is not in the window '''
-        wndSize = self.windowSize   # get window size
-        wndStart = self.windowStart   # get window start
-        wndEnd = (wndStart + wndSize)%self.sequenceSize   # calculate window end
+        wndSize = self.window_size   # get window size
+        wndStart = self.window_start   # get window start
+        wndEnd = (wndStart + wndSize)%self.wdn_max   # calculate window end
 
         afterWndStart  = wndEnd > wndStart and (index >= wndEnd or  index < wndStart)  # index is after the window end and window end is not at the beginning of the sequence
         beforeWndStart = wndEnd < wndStart and (index >= wndEnd and index < wndStart)  # index is before the window start and window end is at the beginning of the sequence
