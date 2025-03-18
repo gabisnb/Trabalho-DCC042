@@ -2,6 +2,7 @@ import socket
 import time
 import random
 import base64
+import traceback
 
 from UDPSecure import UDPSecure
 
@@ -37,38 +38,61 @@ class Receiver(UDPSecure):
 
     def disconnect(self, address):
         try:
+            print(f"Enviando FIN-ACK para {address}")
             super().send(address[0], address[1], b"FIN-ACK")
+
             self.sdnIp = None
             self.sdnPort = None
-            data, address, pktSize = super().receive()
+
             self.updateTimer()
+
             while time.time() - self.timer < self.maxTimer:
-                data, address, pktSize = super().receive()
-                if data.decode() == "ACK":
-                    return
+                try:
+                    data, address, pktSize = super().receive()
+                    if data.decode() == "ACK":
+                        print("ACK recebido. Finalizando desconexão.")
+                        return
+                except Exception as e:
+                    print(f"Erro ao receber pacote: {e}")
+                    traceback.print_exc()
+                    break  # Sai do loop se houver erro
+
+            print("Tempo expirado ou erro detectado. Finalizando conexão.")
+
         except Exception as e:
-            print(Exception)
-    
+            print(f"Erro em disconnect(): {e}")
+            traceback.print_exc()
+
+        finally:
+            print("Chamando __del__() manualmente...")
+            self.__del__()
+
     def receive(self):
         while True:
-            data, address, pktSize = super().receive()
+            try:
+                data, address, pktSize = super().receive()
 
-            if data.decode() == "FIN":
-                self.disconnect(address)
-                self.__del__()
-                return
-            
-            metadata, bin_data = self.extractMetadata(data)
-            sequenceNum = int(metadata[0])
+                if data.decode() == "FIN":
+                    print("Recebido FIN. Iniciando desconexão.")
+                    self.disconnect(address)
+                    return
+                
+                metadata, bin_data = self.extractMetadata(data)
+                sequenceNum = int(metadata[0])
 
-            # Simulação de perda de pacotes (15% de perda, por exemplo)
-            # if random.random() < 0.15:
-            #     print(f"Pacote {sequenceNum} perdido!")
-            #     continue  # Pacote descartado, não envia ACK
-            
-            # self.pkts.append(base64.b64encode(data))
-            ack = self.markPkt(sequenceNum, pktSize)
-            self.send(address[0], address[1], ack.encode())
+                # Simulação de perda de pacotes
+                # if random.random() < 0.15:
+                #     print(f"Pacote {sequenceNum} perdido!")
+                #     continue  
+                
+                ack = self.markPkt(sequenceNum, pktSize)
+                self.send(address[0], address[1], ack.encode())
+
+            except Exception as e:
+                print(f"Erro em receive(): {e}")
+                traceback.print_exc()
+                break
+
     def markPkt(self, index, pktSize):
         if self.isNotInWindow(index):
             if self.window[index]:
