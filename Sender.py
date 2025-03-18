@@ -2,6 +2,7 @@ import socket
 import time
 import random
 import asyncio
+import base64
 
 from UDPSecure import UDPSecure
 
@@ -44,6 +45,15 @@ class Sender(UDPSecure):
                 super().send(self.rcvIp, self.rcvPort, b"ACK")
         except Exception as e:
             print(Exception)
+
+    def sendFile(self, file, num_pkts):
+        with open(file, "rb") as f:
+            for _ in range(num_pkts):
+                chunk = f.read(self.windowSize)
+                chunk = base64.b64encode(chunk)
+                if not chunk:
+                    break
+                self.send(chunk)
 
     def send(self, data):
         if self.cwnd <= 0:

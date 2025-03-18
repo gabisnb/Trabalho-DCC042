@@ -29,14 +29,16 @@ def start_sender():
     sender = Sender(IP_sender, port_sender, buffer_sender)
     sender.connect(IP_receiver, port_receiver)
     
-    with open(data_file, "rb") as f:
-        for _ in range(NUM_PACKETS):
-            chunk = f.read(sender.windowSize)
-            chunk = base64.b64encode(chunk)
-            if not chunk:
-                break
-            sender.send(chunk)
-            time.sleep(0.001)  # Pequeno delay para simular transmissão real
+    # with open(data_file, "rb") as f:
+    #     for _ in range(NUM_PACKETS):
+    #         chunk = f.read(sender.windowSize)
+    #         chunk = base64.b64encode(chunk)
+    #         if not chunk:
+    #             break
+    #         sender.send(chunk)
+    #         time.sleep(0.001)  # Pequeno delay para simular transmissão real
+
+    sender.sendFile(data_file, NUM_PACKETS)
     
     sender.disconnect()
     print("Envio finalizado.")
