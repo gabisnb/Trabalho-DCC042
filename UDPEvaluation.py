@@ -39,7 +39,7 @@ def start_sender():
     #         time.sleep(0.001)  # Pequeno delay para simular transmissão real
 
     sender.sendFile(data_file)
-    
+    time.sleep(1)
     sender.disconnect()
     print("Envio finalizado.")
 

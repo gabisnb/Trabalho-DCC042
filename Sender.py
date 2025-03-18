@@ -59,18 +59,21 @@ class Sender(UDPSecure):
                     if not chunk:
                         break
                     chunk = base64.b64encode(chunk)
-                    self.threads.append(threading.Thread(target=self.send, args=(chunk,)))
-                    self.threads[i].start()
+                    self.send(chunk)
+                    self.threads.append(threading.Thread(target=self.waitAck))
+                    self.threads.__getitem__(len(self.threads)-1).start()
                     chunks_sent = chunks_sent + 1
-                    self.currentIndex = _ % self.wdn_max
                 if self.threads:
-                    result = self.threads.pop(0).join(self.maxTimer)
-                    if result != None and not (result.is_alive()):
-                        self.handle_loss()
-                    i = 1
-                    while i < self.window_size and self.threads:
+                    result = self.threads.__getitem__(0).join(self.maxTimer)
+                    if result != None:
+                        if not (result.is_alive()):
+                            self.currentIndex = self.window_start
+                            self.handle_loss()
+                        # if len(result) == 2:
+                        #     error, ack = result[0], result[1]
+                    while self.threads:
+                        # error, ack = self.threads.pop(0).join()
                         self.threads.pop(0).join()
-                        i = i+1
 
             
 
@@ -81,38 +84,36 @@ class Sender(UDPSecure):
         
         data = (str(self.currentIndex) + "," + str(self.window_size) + ":").encode() + message
         super().send(self.rcvIp, self.rcvPort, data)
-        self.timer = time.time()
-        error, ack = self.waitAck()
+        self.currentIndex = self.currentIndex + len(data) % self.wdn_max
+        # self.timer = time.time()
+        # error, ack = self.waitAck()
         
-        if error:
-            self.handle_loss()
-        else:
-            self.handle_ack(ack)
+        # if error:
+        #     self.handle_loss()
+        # else:
+        #     self.handle_ack(ack)
 
     def waitAck(self):
         """Wait for an ACK and check for duplicate ACKs."""
-        while time.time() - self.timer < self.maxTimer:
-            data, address, pktSize = super().receive()
-            metadata, bin_data = self.extractMetadata(data)
+        data, address, pktSize = super().receive()
+        metadata, bin_data = self.extractMetadata(data)
 
-            if metadata[0] == "Erro":
-                print(metadata)
-                return True, None  # Packet loss detected
-            
-            sequenceNum = int(metadata[0])
-            
-            if sequenceNum == self.last_ack:
-                self.dup_ack_count += 1
-                if self.dup_ack_count == 3:
-                    self.handle_fast_retransmit()
-                    return False, sequenceNum  # Stop waiting once fast retransmit happens
-            else:
-                self.dup_ack_count = 0  # Reset counter
-                self.last_ack = sequenceNum
-
-            return False, sequenceNum  # Return False if ACK is valid
+        if metadata[0] == "Erro":
+            print(metadata)
+            return True, None  # Packet loss detected
         
-        return True, None  # Timeout case
+        sequenceNum = int(metadata[0])
+        
+        if sequenceNum == self.last_ack:
+            self.dup_ack_count += 1
+            if self.dup_ack_count == 3:
+                self.handle_fast_retransmit()
+                return False, sequenceNum  # Stop waiting once fast retransmit happens
+        else:
+            self.dup_ack_count = 0  # Reset counter
+            self.last_ack = sequenceNum
+
+        return False, sequenceNum  # Return False if ACK is valid
 
 
     def handle_loss(self):

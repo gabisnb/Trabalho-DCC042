@@ -80,7 +80,7 @@ class Receiver(UDPSecure):
                     
                     metadata, message = self.extractMetadata(data)
                     sequenceNum = int(metadata[0])
-                    self.window_size = int(metadata[1])
+                    self.window_size = int(metadata[1])*pktSize
 
                     # Simulação de perda de pacotes
                     if random.random() < 0.15:
@@ -127,6 +127,20 @@ class Receiver(UDPSecure):
             self.availableBuff = self.availableBuff + 1
             i = (i+1)%self.wdn_max # Garante que i será um nº de sequência válido
         self.window_start = i
+        
+    def isNotInWindow(self, index):
+        ''' Check if the index is not in the window '''
+        wndSize = self.window_size   # get window size
+        wndStart = self.window_start   # get window start
+        wndEnd = (wndStart + wndSize)%self.wdn_max   # calculate window end
+
+        afterWndStart  = wndEnd > wndStart and (index >= wndEnd or  index < wndStart)  # index is after the window end and window end is not at the beginning of the sequence
+        beforeWndStart = wndEnd < wndStart and (index >= wndEnd and index < wndStart)  # index is before the window start and window end is at the beginning of the sequence
+
+        # if index is after the window end and window end is not at the beginning of the sequence or
+        # if index is before the window start and window end is at the beginning of the sequence, 
+        #     return True
+        return afterWndStart or beforeWndStart
 
     def __del__(self):
         super().__del__()
