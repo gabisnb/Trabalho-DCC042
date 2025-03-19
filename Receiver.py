@@ -18,6 +18,7 @@ class Receiver(UDPSecure):
         self.windowStart = 0
         self.window = []
         self.pkts = []
+        self.lost_packet_count = 0
         self.file = open(destination, 'r+b')
         for i in range(self.sequenceSize):
             self.window.append(False)
@@ -84,6 +85,7 @@ class Receiver(UDPSecure):
                 if data.decode() != "SYN-ACK" or data.decode() != "ACK" or data.decode() != "FIN-ACK" or data.decode() != "FIN" or data.decode() != "SYN":
                     prob_loss = random.random()
                     if prob_loss < 0.15:
+                        self.lost_packet_count += 1
                         print(f"Pacote {sequenceNum} perdido!")
                         continue  
                 

@@ -8,7 +8,7 @@ import base64
 
 # Configurações
 data_file = "test_data.bin"
-NUM_PACKETS = 10000
+NUM_PACKETS = 1000
 
 # Criar arquivo de 10MB para simulação
 def generate_data_file():
@@ -19,6 +19,7 @@ def generate_data_file():
 
 # Função para iniciar o Receiver (Servidor)
 def start_receiver():
+    global receiver  # Make receiver accessible globally
     receiver = Receiver(IP_receiver, port_receiver, buffer_receiver)
     print("Receiver iniciado. Aguardando pacotes...")
     receiver.waitConnection()
@@ -46,4 +47,5 @@ sender_thread.start()
 sender_thread.join()
 receiver_thread.join()
 
-print("Avaliação concluída!")
+# Print the total packet loss at the end
+print(f"Avaliação concluída! Total de pacotes perdidos: {receiver.lost_packet_count}")
